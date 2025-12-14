@@ -91,80 +91,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }, (errorMessage) => {}).catch(err => console.log(err));
     });
-    
-    // Helper to read barcode from a single video frame (for capture button)
-    function readBarcodeFromFrame(videoElement) {
-        return new Promise(resolve => {
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = videoElement.videoWidth;
-            tempCanvas.height = videoElement.videoHeight;
-            const ctx = tempCanvas.getContext('2d');
-            ctx.drawImage(videoElement, 0, 0, tempCanvas.width, tempCanvas.height);
-
-            // Using the temporary library object provided by html5-qrcode
-            Html5Qrcode.getCandidates().forEach(candidate => {
-                candidate.scan().then(decodedText => {
-                    resolve(decodedText);
-                }).catch(() => {});
-            });
-
-            setTimeout(() => resolve(null), 500); 
-        });
-    }
-
-    // Helper to read barcode from a File object
-    function readBarcodeFromFile(imageFile) {
-        return new Promise(resolve => {
-            const tempElementId = "temp-barcode-reader";
-            let tempDiv = document.getElementById(tempElementId);
-            if (!tempDiv) {
-                tempDiv = document.createElement('div');
-                tempDiv.id = tempElementId;
-                tempDiv.style.display = 'none';
-                document.body.appendChild(tempDiv);
-            }
-
-            const html5QrCodeForFile = new Html5Qrcode(tempElementId);
-            
-            // Set a higher time-out (5 seconds) and enable all code formats
-            const config = { 
-                formatsToSupport: [
-                    // Prioritize CODE_128 as it's common for Accession numbers
-                    Html5QrcodeSupportedFormats.CODE_128, 
-                    Html5QrcodeSupportedFormats.QR_CODE,
-                    Html5QrcodeSupportedFormats.CODE_39 
-                ],
-                // Increase time allowed for complex static image analysis
-                timeScale: 500, // Process larger images more thoroughly (default is usually too fast)
-                timeout: 5000 // Give it 5 seconds to find it
-            };
-
-            html5QrCodeForFile.scanFile(imageFile, false, config)
-                .then(decodedText => {
-                    resolve(decodedText);
-                })
-                .catch(() => {
-                    resolve(null);
-                });
-        });
-    }
-
-
 
     // ==========================================
-    // 4. IMAGE CAPTURE (SMART) & UPLOAD
+    // 4. IMAGE CAPTURE & UPLOAD ROUTER
     // ==========================================
     captureBtn.addEventListener('click', async () => {
         if (captureBtn.textContent.includes("Capture")) {
             if(!window.cvReady) { alert("AI Engine loading..."); return; }
             
-            // 1. Barcode Check (Stream)
-            const barcodeResult = await readBarcodeFromFrame(video);
-            if (barcodeResult && !inputs.accession.value) {
-                inputs.accession.value = barcodeResult;
-                console.log(`Barcode Auto-filled: ${barcodeResult}`);
-            }
-
             captureBtn.textContent = "Processing..."; captureBtn.disabled = true;
 
             const canvas = document.createElement('canvas');
@@ -173,6 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await processImageWithOpenCV(canvas);
 
         } else if (captureBtn.textContent.includes("Confirm")) {
+            // STEP 2: Barcode Scan and Finalize
             finishCrop();
         }
     });
@@ -181,35 +116,26 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files && e.target.files[0];
         if (file) {
-            
-            // 1. Barcode Check (File)
-            readBarcodeFromFile(file).then(barcodeResult => {
-                if (barcodeResult && !inputs.accession.value) {
-                    inputs.accession.value = barcodeResult;
-                    console.log(`Barcode Auto-filled from Gallery: ${barcodeResult}`);
-                }
-
-                // 2. Load Image for processing
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = img.width; canvas.height = img.height;
-                        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
-                        if(stream) { video.srcObject.getTracks().forEach(track => track.stop()); video.style.display = 'none'; }
-                        if(!window.cvReady) { alert("AI loading..."); return; }
-                        processImageWithOpenCV(canvas);
-                    };
-                    img.src = e.target.result;
-                }
-                reader.readAsDataURL(file);
-            });
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width; canvas.height = img.height;
+                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
+                    if(stream) { video.srcObject.getTracks().forEach(track => track.stop()); video.style.display = 'none'; }
+                    if(!window.cvReady) { alert("AI loading..."); return; }
+                    processImageWithOpenCV(canvas);
+                };
+                img.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
         }
     });
 
+
     // ==========================================
-    // 5. OPENCV AUTO-STRAIGHTENING (UNCHANGED)
+    // 5. OPENCV AUTO-STRAIGHTENING
     // ==========================================
     async function processImageWithOpenCV(sourceCanvas) {
         try {
@@ -302,18 +228,76 @@ document.addEventListener('DOMContentLoaded', () => {
         captureBtn.textContent = "✅ Confirm Crop"; captureBtn.classList.replace('btn-success', 'btn-warning'); captureBtn.disabled = false;
     }
 
-    function finishCrop() {
-        if(!cropper) return;
-        cropper.getCroppedCanvas({ width: 1600 }).toBlob((blob) => {
-            currentProcessedBlob = blob;
-            captureBtn.textContent = `Ready (${(blob.size/1024).toFixed(0)} KB)`;
-            captureBtn.classList.replace('btn-warning', 'btn-secondary');
-            captureBtn.disabled = true; 
-        }, 'image/jpeg', 0.7);
+    // ==========================================
+    // 6. BARCODE SCAN ON FINALIZED IMAGE
+    // ==========================================
+
+    function readBarcodeFromBlob(blob) {
+        return new Promise(resolve => {
+            const tempElementId = "temp-final-barcode-reader";
+            let tempDiv = document.getElementById(tempElementId);
+            if (!tempDiv) {
+                tempDiv = document.createElement('div');
+                tempDiv.id = tempElementId;
+                tempDiv.style.display = 'none';
+                document.body.appendChild(tempDiv);
+            }
+
+            const html5QrCodeFinal = new Html5Qrcode(tempElementId);
+            
+            // Convert Blob to File object for scanning
+            const file = new File([blob], "final_specimen.jpeg", { type: blob.type });
+
+            const config = { 
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.CODE_128, 
+                    Html5QrcodeSupportedFormats.QR_CODE,
+                    Html5QrcodeSupportedFormats.CODE_39 
+                ],
+                timeScale: 500, // Process image thoroughly
+                timeout: 5000 // 5 seconds to read
+            };
+
+            html5QrCodeFinal.scanFile(file, false, config)
+                .then(decodedText => {
+                    resolve(decodedText);
+                })
+                .catch(() => {
+                    resolve(null);
+                });
+        });
     }
 
+    async function finishCrop() {
+        if(!cropper) return;
+        
+        // Temporarily disable button and show loading text
+        captureBtn.textContent = "Scanning Barcode...";
+        captureBtn.disabled = true;
+
+        cropper.getCroppedCanvas({ width: 1600 }).toBlob(async (blob) => {
+            currentProcessedBlob = blob;
+            
+            // 1. Scan Barcode on the final, straight blob
+            const barcodeResult = await readBarcodeFromBlob(blob);
+            
+            if (barcodeResult && !inputs.accession.value) {
+                inputs.accession.value = barcodeResult;
+                console.log(`Barcode Auto-filled from Final Scan: ${barcodeResult}`);
+            }
+
+            // 2. Update UI
+            captureBtn.textContent = `Ready (${(blob.size/1024).toFixed(0)} KB)`;
+            captureBtn.classList.replace('btn-warning', 'btn-secondary');
+            
+            // Re-enable button but keep it disabled from Capture to signify completion
+            captureBtn.disabled = true; 
+            
+        }, 'image/jpeg', 0.7);
+    }
+    
     // ==========================================
-    // 6. SMART TAXONOMY (UNCHANGED)
+    // 7. SMART TAXONOMY (UNCHANGED)
     // ==========================================
     inputs.binomial.addEventListener('input', (e) => {
         const query = e.target.value; if (query.length < 3) return;
@@ -351,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
-    // 7. SAVE / UPDATE DATA (EDIT LOGIC)
+    // 8. SAVE / UPDATE DATA (EDIT LOGIC)
     // ==========================================
     saveLocalBtn.addEventListener('click', () => {
         // Validation: Required Fields
@@ -369,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (isEditMode && originalImageBase64) {
             saveToStorage(originalImageBase64);
         } else {
-            alert("Please capture or upload an image.");
+            alert("Please capture or upload an image, and confirm crop.");
             return;
         }
     });
@@ -417,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
-    // 8. TABLE, EDIT, AND DELETE FUNCTIONALITY
+    // 9. TABLE, EDIT, AND DELETE FUNCTIONALITY
     // ==========================================
     function renderTable() {
         const db = JSON.parse(localStorage.getItem('herbarium_db')) || [];
@@ -441,7 +425,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Expose edit function to global scope
     window.editSpecimen = function(id) {
         const db = JSON.parse(localStorage.getItem('herbarium_db')) || [];
         const item = db.find(i => i.id === id);
@@ -478,7 +461,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.scrollTo(0, 0);
     };
 
-    // Expose delete function to global scope
     window.deleteSpecimen = function(id) {
         const confirmation = confirm(`Are you sure you want to permanently delete specimen with Accession Number: ${id}? This action cannot be undone.`);
         

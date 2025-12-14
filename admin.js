@@ -122,6 +122,56 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+// --- 3.5 UPLOAD FROM GALLERY ---
+    const fileInput = document.getElementById('file-input');
+    const uploadTrigger = document.getElementById('btn-upload-trigger');
+
+    // Link the visible button to the hidden input
+    uploadTrigger.addEventListener('click', () => fileInput.click());
+
+    // Handle File Selection
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                // 1. Stop Camera (to save battery/resources)
+                if(stream) {
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                    video.style.display = 'none';
+                }
+
+                // 2. Load Image into Preview
+                capturedImage.src = e.target.result;
+                scannerContainer.style.display = 'none';
+                previewContainer.style.display = 'block';
+
+                // 3. Init Cropper (Same logic as Capture)
+                if(cropper) cropper.destroy();
+                cropper = new Cropper(capturedImage, {
+                    viewMode: 1, 
+                    autoCropArea: 0.8, 
+                    movable: false, 
+                    rotatable: true, 
+                    zoomable: false,
+                });
+
+                // 4. Update Main Button to "Save" Mode
+                captureBtn.textContent = "✅ Confirm Crop";
+                captureBtn.classList.replace('btn-success', 'btn-warning');
+                
+                // Ensure the button logic knows we are now in "Crop Confirmation" mode
+                // (The existing click listener on captureBtn handles this based on text content)
+            }
+            
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    });
+
+
+
+
+    
     // --- 4. SMART TAXONOMY ---
     inputs.binomial.addEventListener('input', (e) => {
         const query = e.target.value;

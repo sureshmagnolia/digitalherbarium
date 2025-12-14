@@ -23,11 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const cvStatus = document.getElementById('cv-status');
     const localDbBody = document.getElementById('local-db-body');
     
-    // Inputs (UPDATED with Collection Number & Type Status)
+    // Inputs
     const inputs = {
         accession: document.getElementById('accession-number'),
-        collectionNumber: document.getElementById('collection-number'), // NEW
-        typeStatus: document.getElementById('type-status'),           // NEW
+        collectionNumber: document.getElementById('collection-number'),
+        typeStatus: document.getElementById('type-status'),
         date: document.getElementById('collection-date'),
         collector: document.getElementById('collector'),
         location: document.getElementById('location'),
@@ -80,15 +80,12 @@ document.addEventListener('DOMContentLoaded', () => {
     scanBarcodeBtn.addEventListener('click', () => {
         if(stream) { video.srcObject.getTracks().forEach(track => track.stop()); video.style.display = 'none'; }
         
-        // Use scannerContainer for the full dedicated view
         html5QrCode = new Html5Qrcode("scanner-container");
         
-        // Configuration for faster dedicated scan
         html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 300, height: 100 } }, 
         (decodedText) => {
             inputs.accession.value = decodedText;
             html5QrCode.stop().then(() => {
-                // Return to normal view
                 video.style.display = 'block';
                 startCamera(); 
             });
@@ -102,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (captureBtn.textContent.includes("Capture")) {
             if(!window.cvReady) { alert("AI Engine loading..."); return; }
             
-            // 1. Barcode Check (Quick check on current frame)
+            // 1. Barcode Check
             const barcodeResult = await readBarcodeFromFrame(video);
             if (barcodeResult && !inputs.accession.value) {
                 inputs.accession.value = barcodeResult;
@@ -125,23 +122,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper to read barcode from a single video frame (for capture button)
     function readBarcodeFromFrame(videoElement) {
         return new Promise(resolve => {
-            // Use a temporary library instance for single frame scan
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = videoElement.videoWidth;
             tempCanvas.height = videoElement.videoHeight;
             const ctx = tempCanvas.getContext('2d');
             ctx.drawImage(videoElement, 0, 0, tempCanvas.width, tempCanvas.height);
 
-            // Using the temporary library object provided by html5-qrcode
             Html5Qrcode.getCandidates().forEach(candidate => {
                 candidate.scan().then(decodedText => {
                     resolve(decodedText);
-                }).catch(() => {
-                    // Ignore error, continue trying to scan
-                });
+                }).catch(() => {});
             });
 
-            // If no immediate result after 500ms, assume no barcode found
             setTimeout(() => resolve(null), 500); 
         });
     }
@@ -167,11 +159,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ==========================================
-    // 5. OPENCV AUTO-STRAIGHTENING (UNCHANGED)
+    // 5. OPENCV AUTO-STRAIGHTENING
     // ==========================================
     async function processImageWithOpenCV(sourceCanvas) {
-        // ... (OpenCV code from previous response - too long to duplicate fully)
-        // [NOTE: This section remains the same as the final version of the previous admin.js]
         try {
             console.log("Starting OpenCV...");
             let src = cv.imread(sourceCanvas);
@@ -273,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
-    // 6. SMART TAXONOMY (UNCHANGED)
+    // 6. SMART TAXONOMY
     // ==========================================
     inputs.binomial.addEventListener('input', (e) => {
         const query = e.target.value; if (query.length < 3) return;
@@ -314,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 7. SAVE / UPDATE DATA (EDIT LOGIC)
     // ==========================================
     saveLocalBtn.addEventListener('click', () => {
-        // Validation: Required Fields (UPDATED)
+        // Validation: Required Fields
         if (!inputs.accession.value || !inputs.binomial.value || !inputs.date.value || !inputs.collector.value || !inputs.location.value || !inputs.collectionNumber.value) { 
             alert("Please fill ALL mandatory fields (*)."); 
             return; 
@@ -344,8 +334,8 @@ document.addEventListener('DOMContentLoaded', () => {
             date: inputs.date.value,
             collector: inputs.collector.value,
             location: inputs.location.value,
-            collectionNumber: inputs.collectionNumber.value, // NEW
-            typeStatus: inputs.typeStatus.value,             // NEW
+            collectionNumber: inputs.collectionNumber.value,
+            typeStatus: inputs.typeStatus.value,
             image: base64Image,
             size: currentProcessedBlob ? (currentProcessedBlob.size / 1024).toFixed(1) + " KB" : "Unchanged"
         };
@@ -377,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
-    // 8. TABLE & EDIT FUNCTIONALITY (UPDATED)
+    // 8. TABLE, EDIT, AND DELETE FUNCTIONALITY
     // ==========================================
     function renderTable() {
         const db = JSON.parse(localStorage.getItem('herbarium_db')) || [];
@@ -393,13 +383,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     <small class="text-muted">${specimen.collector} (${specimen.collectionNumber})</small>
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="editSpecimen('${specimen.id}')">✏️ Edit</button>
+                    <button class="btn btn-sm btn-outline-primary mb-1" onclick="editSpecimen('${specimen.id}')">✏️ Edit</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteSpecimen('${specimen.id}')">🗑️ Delete</button>
                 </td>
             `;
             localDbBody.appendChild(row);
         });
     }
 
+    // Expose edit function to global scope
     window.editSpecimen = function(id) {
         const db = JSON.parse(localStorage.getItem('herbarium_db')) || [];
         const item = db.find(i => i.id === id);
@@ -410,10 +402,10 @@ document.addEventListener('DOMContentLoaded', () => {
         editId = id;
         originalImageBase64 = item.image;
 
-        // Populate Form (UPDATED)
+        // Populate Form
         inputs.accession.value = item.id;
-        inputs.collectionNumber.value = item.collectionNumber; // NEW
-        inputs.typeStatus.value = item.typeStatus || 'None';    // NEW
+        inputs.collectionNumber.value = item.collectionNumber;
+        inputs.typeStatus.value = item.typeStatus || 'None';
         inputs.date.value = item.date;
         inputs.collector.value = item.collector;
         inputs.location.value = item.location;
@@ -436,6 +428,29 @@ document.addEventListener('DOMContentLoaded', () => {
         window.scrollTo(0, 0);
     };
 
+    // New: Expose delete function to global scope
+    window.deleteSpecimen = function(id) {
+        const confirmation = confirm(`Are you sure you want to permanently delete specimen with Accession Number: ${id}? This action cannot be undone.`);
+        
+        if (confirmation) {
+            let db = JSON.parse(localStorage.getItem('herbarium_db')) || [];
+            const initialLength = db.length;
+            
+            // Filter out the item to be deleted
+            db = db.filter(item => item.id !== id);
+            
+            if (db.length < initialLength) {
+                localStorage.setItem('herbarium_db', JSON.stringify(db));
+                alert(`Specimen ${id} deleted successfully.`);
+                renderTable();
+                // If currently editing the deleted item, reset the form
+                if (editId === id) resetApp();
+            } else {
+                alert(`Error: Specimen ${id} not found.`);
+            }
+        }
+    };
+
     cancelEditBtn.addEventListener('click', resetApp);
 
     function resetApp() {
@@ -443,7 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
         inputs.accession.value = ''; inputs.binomial.value = ''; 
         inputs.family.value = ''; inputs.genus.value = ''; inputs.author.value = '';
         inputs.date.value = ''; inputs.collector.value = ''; inputs.location.value = '';
-        inputs.collectionNumber.value = ''; inputs.typeStatus.value = 'None'; // NEW FIELDS RESET
+        inputs.collectionNumber.value = ''; inputs.typeStatus.value = 'None';
         inputs.hint.textContent = 'Start typing to search GBIF...';
 
         // Reset State

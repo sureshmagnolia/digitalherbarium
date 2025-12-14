@@ -228,10 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
         captureBtn.textContent = "✅ Confirm Crop"; captureBtn.classList.replace('btn-success', 'btn-warning'); captureBtn.disabled = false;
     }
 
-    // ==========================================
-    // 6. BARCODE SCAN ON FINALIZED IMAGE
-    // ==========================================
-
+    // Helper function to read barcode from a Blob object
     function readBarcodeFromBlob(blob) {
         return new Promise(resolve => {
             const tempElementId = "temp-final-barcode-reader";
@@ -249,13 +246,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = new File([blob], "final_specimen.jpeg", { type: blob.type });
 
             const config = { 
+                // CRITICAL CHANGE 1: Prioritize the most common herbarium code
                 formatsToSupport: [
                     Html5QrcodeSupportedFormats.CODE_128, 
-                    Html5QrcodeSupportedFormats.QR_CODE,
-                    Html5QrcodeSupportedFormats.CODE_39 
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.QR_CODE
                 ],
-                timeScale: 500, // Process image thoroughly
-                timeout: 5000 // 5 seconds to read
+                // CRITICAL CHANGE 2: Increase the time allowed for complex static image analysis
+                timeScale: 700, // Slightly higher processing effort
+                timeout: 7000,  // Give it 7 seconds to find the barcode
+                // CRITICAL CHANGE 3: Optimize for small targets by disabling noise filtering
+                // This is risky, but necessary for small labels
+                tryHarder: true 
             };
 
             html5QrCodeFinal.scanFile(file, false, config)

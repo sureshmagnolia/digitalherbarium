@@ -12,7 +12,10 @@
 <body class="bg-light">
 
 <div class="container py-4">
-    <h2 class="mb-3">🌿 Herbarium Admin Scanner</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">🌿 Herbarium Admin</h2>
+        <span class="badge bg-secondary">Local Mode</span>
+    </div>
 
     <div class="card shadow-sm mb-4">
         <div class="card-body p-2">
@@ -34,7 +37,7 @@
         </div>
     </div>
 
-    <div class="card shadow-sm">
+    <div class="card shadow-sm mb-4">
         <div class="card-header bg-white">
             <h5 class="mb-0">Specimen Details</h5>
         </div>
@@ -71,9 +74,30 @@
                     </div>
                 </div>
                 
-                <button type="button" id="btn-upload-firebase" class="btn btn-primary w-100" disabled>Upload to Database (Pending Setup)</button>
+                <button type="button" id="btn-save-local" class="btn btn-primary w-100 btn-lg">💾 Save to Local Database</button>
 
             </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-5">
+        <div class="card-header bg-dark text-white d-flex justify-content-between">
+            <h5 class="mb-0">Local Database</h5>
+            <small>Session Only</small>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-striped mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th width="60">Thumb</th>
+                        <th>Accession</th>
+                        <th>Name</th>
+                        <th>Size</th>
+                    </tr>
+                </thead>
+                <tbody id="local-db-body">
+                    </tbody>
+            </table>
         </div>
     </div>
 </div>

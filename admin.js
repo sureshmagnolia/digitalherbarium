@@ -180,8 +180,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ==========================================
-    // 5. OPENCV AUTO-STRAIGHTENING (THE AI)
+// ==========================================
+    // 5. OPENCV AUTO-STRAIGHTENING (FIXED)
     // ==========================================
 
     async function processImageWithOpenCV(sourceCanvas) {
@@ -230,6 +230,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
+            // Create a temporary canvas for OpenCV to render into
+            const outputCanvas = document.createElement('canvas');
+
             // 5. Warp Perspective (Straighten)
             if (maxCnt) {
                 console.log("Document edges found!");
@@ -244,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Sort corners: TL, TR, BR, BL
                 const orderedPts = orderPoints(inputPts);
 
-                // Calculate width/height of the new flattened image
+                // Calculate width/height
                 let widthA = Math.hypot(orderedPts[2] - orderedPts[0], orderedPts[3] - orderedPts[1]);
                 let widthB = Math.hypot(orderedPts[6] - orderedPts[4], orderedPts[7] - orderedPts[5]);
                 let maxWidth = Math.max(widthA, widthB);
@@ -262,8 +265,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 let warped = new cv.Mat();
                 cv.warpPerspective(src, warped, M, new cv.Size(maxWidth, maxHeight), cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
 
-                // Display Result
-                cv.imshow('captured-image', warped);
+                // FIX: Render to temp canvas, then set IMG src
+                cv.imshow(outputCanvas, warped); 
+                capturedImage.src = outputCanvas.toDataURL('image/jpeg');
                 
                 // Clean up matrices
                 srcTri.delete(); dstTri.delete(); M.delete(); warped.delete();
@@ -271,7 +275,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // Fallback: No clear document found
                 console.log("No document found, using original.");
-                cv.imshow('captured-image', src);
+                
+                // FIX: Render original to temp canvas, then set IMG src
+                cv.imshow(outputCanvas, src);
+                capturedImage.src = outputCanvas.toDataURL('image/jpeg');
+                
                 cvStatus.textContent = "Manual Mode";
             }
 
@@ -285,8 +293,9 @@ document.addEventListener('DOMContentLoaded', () => {
             scannerContainer.style.display = 'none';
             previewContainer.style.display = 'block';
 
-            // 7. Initialize Manual Cropper (for fine-tuning)
-            initCropper();
+            // 7. Initialize Manual Cropper (Wait for image to load)
+            // We use a small timeout to ensure the DOM has updated the SRC
+            setTimeout(() => initCropper(), 100);
 
         } catch (e) {
             console.error("OpenCV Error:", e);
@@ -296,6 +305,9 @@ document.addEventListener('DOMContentLoaded', () => {
             initCropper();
         }
     }
+
+
+    
 
     // Helper: Sort 4 points into TL, TR, BR, BL order
     function orderPoints(pts) {

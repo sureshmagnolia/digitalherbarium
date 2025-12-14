@@ -157,7 +157,77 @@
             alert("Could not access camera. Please allow permissions.");
         }
     }
+// --- 5. SMART TAXONOMY LOGIC (GBIF INTEGRATION) ---
+    const binomialInput = document.getElementById('binomial-input');
+    const suggestionsList = document.getElementById('taxonomy-suggestions');
+    const familyInput = document.getElementById('family');
+    const genusInput = document.getElementById('genus');
+    const authorInput = document.getElementById('author');
 
+    // Debounce function: Prevents API calls on every single keystroke (waits 300ms)
+    let debounceTimer;
+    
+    binomialInput.addEventListener('input', (e) => {
+        const query = e.target.value;
+        if (query.length < 3) return; // Don't search for short text
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            fetchSpeciesSuggestions(query);
+        }, 300);
+    });
+
+    // Function to fetch suggestions from GBIF
+    async function fetchSpeciesSuggestions(query) {
+        // GBIF Backbone Taxonomy Dataset Key: d7dddbf4-2cf0-4f39-9b2a-bb099caae36c
+        const url = `https://api.gbif.org/v1/species/suggest?q=${query}&rank=SPECIES&datasetKey=d7dddbf4-2cf0-4f39-9b2a-bb099caae36c`;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            // Clear old suggestions
+            suggestionsList.innerHTML = '';
+
+            data.forEach(item => {
+                // Create an option for the datalist
+                const option = document.createElement('option');
+                option.value = item.scientificName; // This is what enters the box when clicked
+                suggestionsList.appendChild(option);
+            });
+
+            // CHECK: Did the user type/select a full valid name?
+            // If the input matches one of the results exactly, fetch full details.
+            const exactMatch = data.find(d => d.scientificName === query);
+            if (exactMatch) {
+                fillTaxonomyDetails(exactMatch);
+            }
+
+        } catch (error) {
+            console.error("GBIF API Error:", error);
+        }
+    }
+
+    // Function to fill the read-only boxes
+    function fillTaxonomyDetails(data) {
+        console.log("Selected Plant Data:", data);
+        
+        // Auto-fill fields
+        // Note: GBIF returns uppercase families usually
+        familyInput.value = data.family || "Unknown";
+        genusInput.value = data.genus || "Unknown";
+        authorInput.value = data.authorship || "";
+        
+        // Visual feedback
+        document.getElementById('taxa-hint').textContent = `✅ Verified: ${data.scientificName}`;
+        document.getElementById('taxa-hint').classList.replace('text-muted', 'text-success');
+    }
+    
+    // Listen for "change" event (when user selects from dropdown)
+    binomialInput.addEventListener('change', (e) => {
+        // Re-run the fetch to ensure we get the details for the final selection
+        fetchSpeciesSuggestions(e.target.value);
+    });
     // Start camera on load
     startCamera();
 

@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // New: Helper to read barcode from a File object
+    // Helper to read barcode from a File object
     function readBarcodeFromFile(imageFile) {
         return new Promise(resolve => {
             const tempElementId = "temp-barcode-reader";
@@ -125,18 +125,30 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const html5QrCodeForFile = new Html5Qrcode(tempElementId);
+            
+            // Set a higher time-out (5 seconds) and enable all code formats
+            const config = { 
+                formatsToSupport: [
+                    // Prioritize CODE_128 as it's common for Accession numbers
+                    Html5QrcodeSupportedFormats.CODE_128, 
+                    Html5QrcodeSupportedFormats.QR_CODE,
+                    Html5QrcodeSupportedFormats.CODE_39 
+                ],
+                // Increase time allowed for complex static image analysis
+                timeScale: 500, // Process larger images more thoroughly (default is usually too fast)
+                timeout: 5000 // Give it 5 seconds to find it
+            };
 
-            html5QrCodeForFile.scanFile(imageFile, false)
+            html5QrCodeForFile.scanFile(imageFile, false, config)
                 .then(decodedText => {
                     resolve(decodedText);
                 })
                 .catch(() => {
                     resolve(null);
                 });
-            // Note: Cleanup is handled internally by the library on file scan finish, 
-            // but the element itself remains hidden for reuse.
         });
     }
+
 
 
     // ==========================================

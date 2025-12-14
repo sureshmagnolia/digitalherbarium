@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GVC Virtual Herbarium</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
+    <style>
+        /* Custom Styles for Public View */
+        .hero-section {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 3rem 1rem;
+            border-radius: 0 0 20px 20px;
+            margin-bottom: 2rem;
+        }
+        .card-img-top {
+            height: 200px;
+            object-fit: cover;
+            border-bottom: 1px solid #eee;
+        }
+        .specimen-card {
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        .specimen-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .modal-img {
+            width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="#">🌿 GVC Herbarium</a>
+        <div class="d-flex">
+            <a href="admin.html" class="btn btn-outline-light btn-sm">Admin Login</a>
+        </div>
+    </div>
+</nav>
+
+<div class="hero-section text-center">
+    <h1 class="display-5 fw-bold mb-3">Digital Flora Archive</h1>
+    <p class="lead mb-4">Explore the biodiversity of Palakkad and beyond.</p>
+    
+    <div class="container" style="max-width: 800px;">
+        <div class="input-group input-group-lg shadow-sm">
+            <span class="input-group-text bg-white border-0"><i class="bi bi-search"></i></span>
+            <input type="text" id="search-input" class="form-control border-0" placeholder="Search by Name, Family, Location or Collector...">
+        </div>
+        
+        <div class="d-flex gap-2 justify-content-center mt-3">
+            <select class="form-select form-select-sm w-auto" id="filter-family">
+                <option value="">All Families</option>
+                </select>
+            <select class="form-select form-select-sm w-auto" id="filter-location">
+                <option value="">All Locations</option>
+                </select>
+        </div>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="text-muted" id="result-count">Showing all specimens</h5>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4" id="gallery-grid">
+        </div>
+    
+    <div id="no-results" class="text-center py-5 d-none">
+        <i class="bi bi-tree text-muted" style="font-size: 3rem;"></i>
+        <p class="text-muted mt-2">No plants found matching your search.</p>
+    </div>
+</div>
+
+<div class="modal fade" id="specimenModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fw-bold" id="modal-title">Plant Name</h5>
+                    <small class="text-muted" id="modal-subtitle">Family Name</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-lg-8 bg-dark text-center py-3 rounded">
+                        <img src="" id="modal-img" class="modal-img" alt="Specimen">
+                    </div>
+                    <div class="col-lg-4 mt-3 mt-lg-0">
+                        <h6 class="text-uppercase text-muted small fw-bold">Taxonomy</h6>
+                        <ul class="list-unstyled mb-4">
+                            <li><strong>Genus:</strong> <span id="m-genus"></span></li>
+                            <li><strong>Species:</strong> <span id="m-species"></span></li>
+                            <li><strong>Author:</strong> <span id="m-author"></span></li>
+                            <li><strong>Family:</strong> <span id="m-family"></span></li>
+                        </ul>
+
+                        <h6 class="text-uppercase text-muted small fw-bold">Collection Details</h6>
+                        <ul class="list-unstyled mb-4">
+                            <li><strong>Accession:</strong> <span id="m-accession" class="badge bg-primary"></span></li>
+                            <li><strong>Collected By:</strong> <span id="m-collector"></span></li>
+                            <li><strong>Date:</strong> <span id="m-date"></span></li>
+                            <li><strong>Location:</strong> <span id="m-location"></span></li>
+                        </ul>
+                        
+                        <div class="alert alert-light border">
+                            <strong>Notes:</strong>
+                            <p class="small mb-0" id="m-notes">Found in humid conditions.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="public.js"></script>
+
+</body>
+</html>

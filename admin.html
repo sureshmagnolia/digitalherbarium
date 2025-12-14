@@ -42,37 +42,80 @@
     </div>
 
     <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Specimen Details</h5>
+            <button id="btn-cancel-edit" class="btn btn-sm btn-outline-danger d-none">Cancel Edit</button>
+        </div>
         <div class="card-body">
             <form id="herbarium-form">
-                <div class="mb-3">
-                    <label class="form-label">Accession Number</label>
-                    <div class="input-group">
-                        <span class="input-group-text">#</span>
-                        <input type="text" id="accession-number" class="form-control fw-bold" placeholder="Scan or type...">
+                
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Accession Number *</label>
+                        <div class="input-group">
+                            <span class="input-group-text">#</span>
+                            <input type="text" id="accession-number" class="form-control fw-bold" placeholder="Scan or type...">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Collection Date *</label>
+                        <input type="date" id="collection-date" class="form-control">
                     </div>
                 </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Collected By *</label>
+                        <input type="text" id="collector" class="form-control" placeholder="e.g. Dr. Suresh V">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Location *</label>
+                        <input type="text" id="location" class="form-control" placeholder="e.g. Silent Valley">
+                    </div>
+                </div>
+
                 <div class="mb-3 position-relative">
-                    <label class="form-label">Scientific Name</label>
+                    <label class="form-label small fw-bold">Scientific Name *</label>
                     <input type="text" id="binomial-input" class="form-control" placeholder="Type name (e.g. Tectona)..." list="taxonomy-suggestions" autocomplete="off">
                     <datalist id="taxonomy-suggestions"></datalist>
                     <small class="text-muted" id="taxa-hint">Start typing to search GBIF...</small>
                 </div>
+
                 <div class="row g-2 mb-3">
-                    <div class="col-6"><input type="text" id="family" class="form-control bg-light" readonly placeholder="Family"></div>
-                    <div class="col-6"><input type="text" id="genus" class="form-control bg-light" readonly placeholder="Genus"></div>
-                    <div class="col-12"><input type="text" id="author" class="form-control bg-light" readonly placeholder="Author"></div>
+                    <div class="col-4">
+                        <input type="text" id="family" class="form-control bg-light form-control-sm" readonly placeholder="Family">
+                    </div>
+                    <div class="col-4">
+                        <input type="text" id="genus" class="form-control bg-light form-control-sm" readonly placeholder="Genus">
+                    </div>
+                    <div class="col-4">
+                        <input type="text" id="author" class="form-control bg-light form-control-sm" readonly placeholder="Author">
+                    </div>
                 </div>
-                 <button type="button" id="btn-save-local" class="btn btn-primary w-100 btn-lg">💾 Save to Local Database</button>
+                
+                <button type="button" id="btn-save-local" class="btn btn-primary w-100 btn-lg">💾 Save Specimen</button>
+
             </form>
         </div>
     </div>
 
     <div class="card shadow-sm mb-5">
-        <div class="card-header bg-dark text-white"><h5 class="mb-0">Local Database</h5></div>
+        <div class="card-header bg-dark text-white d-flex justify-content-between">
+            <h5 class="mb-0">Local Database</h5>
+            <small>Session Storage</small>
+        </div>
         <div class="card-body p-0">
             <table class="table table-striped mb-0 align-middle">
-                <thead><tr><th width="60">Thumb</th><th>Accession</th><th>Name</th><th>Size</th></tr></thead>
-                <tbody id="local-db-body"></tbody>
+                <thead>
+                    <tr>
+                        <th width="60">Thumb</th>
+                        <th>Accession</th>
+                        <th>Details</th>
+                        <th width="80">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="local-db-body">
+                    </tbody>
             </table>
         </div>
     </div>
@@ -84,6 +127,7 @@
 <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady()" type="text/javascript"></script>
 
 <script src="admin.js"></script>
+
 <script>
     // Helper to notify when OpenCV is ready
     function onOpenCvReady() {

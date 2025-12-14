@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    async function finishCrop() {
+  async function finishCrop() {
         if(!cropper) return;
         
         // Temporarily disable button and show loading text
@@ -281,12 +281,18 @@ document.addEventListener('DOMContentLoaded', () => {
             // 1. Scan Barcode on the final, straight blob
             const barcodeResult = await readBarcodeFromBlob(blob);
             
-            if (barcodeResult && !inputs.accession.value) {
-                inputs.accession.value = barcodeResult;
-                console.log(`Barcode Auto-filled from Final Scan: ${barcodeResult}`);
+            // CRITICAL FIX: Populate Accession Number immediately if a result is found
+            // and the field is empty (or in edit mode and allowed to change).
+            if (barcodeResult) {
+                if (!inputs.accession.value || isEditMode) {
+                    inputs.accession.value = barcodeResult;
+                    console.log(`Accession Number Populated: ${barcodeResult}`);
+                }
+            } else {
+                console.log("No barcode found on finalized image.");
             }
 
-            // 2. Update UI
+            // 2. Update UI (regardless of whether a barcode was found)
             captureBtn.textContent = `Ready (${(blob.size/1024).toFixed(0)} KB)`;
             captureBtn.classList.replace('btn-warning', 'btn-secondary');
             

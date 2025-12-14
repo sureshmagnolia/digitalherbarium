@@ -83,11 +83,35 @@
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Scientific Name</label>
-                    <input type="text" id="binomial-input" class="form-control" placeholder="Type name (e.g. Tectona)...">
-                    <small class="text-muted" id="taxa-hint">Start typing to search GBIF...</small>
-                </div>
+
+
+<div class="mb-3 position-relative">
+    <label class="form-label">Scientific Name</label>
+    <input type="text" id="binomial-input" class="form-control" placeholder="Type name (e.g. Tectona)..." list="taxonomy-suggestions" autocomplete="off">
+    <datalist id="taxonomy-suggestions"></datalist>
+    <small class="text-muted" id="taxa-hint">Start typing to search GBIF...</small>
+</div>
+
+<div class="row g-2 mb-3">
+    <div class="col-6">
+        <label class="small text-muted">Family</label>
+        <input type="text" id="family" class="form-control bg-light" readonly>
+    </div>
+    <div class="col-6">
+        <label class="small text-muted">Genus</label>
+        <input type="text" id="genus" class="form-control bg-light" readonly>
+    </div>
+    <div class="col-12">
+        <label class="small text-muted">Author Citation</label>
+        <input type="text" id="author" class="form-control bg-light" readonly>
+    </div>
+</div>
+
+
+
+
+
+                
 
                 <div class="row g-2">
                     <div class="col-6">

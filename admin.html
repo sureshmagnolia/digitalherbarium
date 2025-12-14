@@ -32,11 +32,10 @@
             <div class="d-flex justify-content-between mt-3 gap-2">
                 <input type="file" id="file-input" accept="image/*" hidden>
                 
-                <button id="btn-toggle-camera" class="btn btn-secondary">Stop Cam</button>
-                <button id="btn-scan-barcode" class="btn btn-warning">Scan Barcode</button>
-                <button id="btn-upload-trigger" class="btn btn-info text-white">📂 Upload</button>
+                <button id="btn-toggle-camera" class="btn btn-secondary btn-sm">Stop Cam</button>
+                <button id="btn-upload-trigger" class="btn btn-info text-white btn-sm">📂 Upload</button>
                 
-                <button id="btn-capture" class="btn btn-success btn-lg flex-grow-1" disabled>📸 Capture</button>
+                <button id="btn-capture" class="btn btn-success btn-lg flex-grow-1" disabled>📸 Capture Sheet (Auto-Read Barcode)</button>
             </div>
         </div>
     </div>
@@ -49,13 +48,39 @@
         <div class="card-body">
             <form id="herbarium-form">
                 
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Accession Number *</label>
+                    <div class="input-group">
+                        <span class="input-group-text">#</span>
+                        <input type="text" id="accession-number" class="form-control fw-bold" placeholder="Auto-filled from barcode, or type">
+                        <button type="button" id="btn-scan-barcode" class="btn btn-warning">Scan Barcode</button>
+                    </div>
+                </div>
+
                 <div class="row g-2 mb-3">
                     <div class="col-md-6">
-                        <label class="form-label small fw-bold">Accession Number *</label>
-                        <div class="input-group">
-                            <span class="input-group-text">#</span>
-                            <input type="text" id="accession-number" class="form-control fw-bold" placeholder="Scan or type...">
-                        </div>
+                        <label class="form-label small fw-bold">Collection Number *</label>
+                        <input type="text" id="collection-number" class="form-control" placeholder="e.g. 1045A">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Type Status *</label>
+                        <select id="type-status" class="form-select">
+                            <option value="None" selected>None</option>
+                            <option value="Holotype">Holotype</option>
+                            <option value="Isotype">Isotype</option>
+                            <option value="Lectotype">Lectotype</option>
+                            <option value="Paratype">Paratype</option>
+                            <option value="Syntype">Syntype</option>
+                            <option value="Neotype">Neotype</option>
+                            <option value="Other">Other Type</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Collected By *</label>
+                        <input type="text" id="collector" class="form-control" placeholder="e.g. Dr. Suresh V">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small fw-bold">Collection Date *</label>
@@ -63,15 +88,9 @@
                     </div>
                 </div>
 
-                <div class="row g-2 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">Collected By *</label>
-                        <input type="text" id="collector" class="form-control" placeholder="e.g. Dr. Suresh V">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">Location *</label>
-                        <input type="text" id="location" class="form-control" placeholder="e.g. Silent Valley">
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Location *</label>
+                    <input type="text" id="location" class="form-control" placeholder="e.g. Silent Valley">
                 </div>
 
                 <div class="mb-3 position-relative">

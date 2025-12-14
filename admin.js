@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
         captureBtn.textContent = "✅ Confirm Crop"; captureBtn.classList.replace('btn-success', 'btn-warning'); captureBtn.disabled = false;
     }
 
-    // Helper function to read barcode from a Blob object
+// Helper function to read barcode from a Blob object
     function readBarcodeFromBlob(blob) {
         return new Promise(resolve => {
             const tempElementId = "temp-final-barcode-reader";
@@ -246,18 +246,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = new File([blob], "final_specimen.jpeg", { type: blob.type });
 
             const config = { 
-                // CRITICAL CHANGE 1: Prioritize the most common herbarium code
                 formatsToSupport: [
                     Html5QrcodeSupportedFormats.CODE_128, 
                     Html5QrcodeSupportedFormats.CODE_39,
                     Html5QrcodeSupportedFormats.QR_CODE
                 ],
-                // CRITICAL CHANGE 2: Increase the time allowed for complex static image analysis
-                timeScale: 700, // Slightly higher processing effort
-                timeout: 7000,  // Give it 7 seconds to find the barcode
-                // CRITICAL CHANGE 3: Optimize for small targets by disabling noise filtering
-                // This is risky, but necessary for small labels
-                tryHarder: true 
+                timeScale: 700,
+                timeout: 7000,
+                tryHarder: true,
+                
+                // CRITICAL CHANGE: Define a Region of Interest (ROI)
+                // We define the scan area to be the top 35% of the image.
+                scanRegion: {
+                    width: 100, // Scan across the full width (100%)
+                    height: 35, // Scan only the top 35% of the height
+                    top: 0,     // Start at the very top
+                    left: 0     // Start at the very left
+                }
             };
 
             html5QrCodeFinal.scanFile(file, false, config)
@@ -269,6 +274,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
         });
     }
+
+
+    
 
   async function finishCrop() {
         if(!cropper) return;

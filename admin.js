@@ -425,7 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
-    // 8. SAVE TO LOCAL DATABASE
+    // 8. SAVE TO BROWSER STORAGE (Shared with Public View)
     // ==========================================
 
     saveLocalBtn.addEventListener('click', () => {
@@ -439,52 +439,78 @@ document.addEventListener('DOMContentLoaded', () => {
             return; 
         }
 
-        // Create Data Object
-        const specimen = {
-            id: inputs.accession.value,
-            name: inputs.binomial.value,
-            family: inputs.family.value,
-            size: (currentProcessedBlob.size / 1024).toFixed(1) + " KB",
-            imgUrl: URL.createObjectURL(currentProcessedBlob) // Blob URL for preview
-        };
+        // 1. Convert Blob to Base64 (Required for LocalStorage)
+        const reader = new FileReader();
+        reader.readAsDataURL(currentProcessedBlob);
+        
+        reader.onloadend = function() {
+            const base64data = reader.result;
 
-        // Add Row to Table
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td><img src="${specimen.imgUrl}" style="height:50px;width:50px;object-fit:cover;border-radius:4px;"></td>
-            <td class="fw-bold">${specimen.id}</td>
-            <td>${specimen.name}<br><small class="text-muted">${specimen.family}</small></td>
-            <td>${specimen.size}</td>
-        `;
-        localDbBody.prepend(row);
+            // 2. Create Data Object
+            const specimen = {
+                id: inputs.accession.value,
+                scientificName: inputs.binomial.value, // Changed key to match Public View
+                family: inputs.family.value,
+                author: inputs.author.value,           // Added Author
+                genus: inputs.genus.value,
+                size: (currentProcessedBlob.size / 1024).toFixed(1) + " KB",
+                image: base64data,                     // Storing the actual image data
+                location: "Local Test Lab",            // Default for test
+                collector: "Admin User",               // Default for test
+                date: new Date().toISOString().split('T')[0]
+            };
 
-        // Reset App for Next Scan
-        resetApp();
+            // 3. Save to LocalStorage
+            try {
+                const existingData = JSON.parse(localStorage.getItem('herbarium_db')) || [];
+                existingData.push(specimen);
+                localStorage.setItem('herbarium_db', JSON.stringify(existingData));
+                
+                // 4. Update UI Table
+                addRowsToTable([specimen]); // Helper function below
+                
+                alert("Saved! You can now view this in the Public Search page.");
+                resetApp();
+
+            } catch (e) {
+                console.error(e);
+                alert("Storage Full! LocalStorage has a 5MB limit. Please clear old data or switch to Firebase.");
+            }
+        }
     });
 
+    // Helper to render table rows
+    function addRowsToTable(items) {
+        items.forEach(specimen => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><img src="${specimen.image}" style="height:50px;width:50px;object-fit:cover;border-radius:4px;"></td>
+                <td class="fw-bold">${specimen.id}</td>
+                <td>${specimen.scientificName}<br><small class="text-muted">${specimen.family}</small></td>
+                <td>${specimen.size}</td>
+            `;
+            localDbBody.prepend(row);
+        });
+    }
+
+    // Load existing data on startup
+    const saved = JSON.parse(localStorage.getItem('herbarium_db')) || [];
+    if(saved.length > 0) addRowsToTable(saved);
+
     function resetApp() {
-        // Clear Inputs
         inputs.accession.value = ''; inputs.binomial.value = ''; 
         inputs.family.value = ''; inputs.genus.value = ''; inputs.author.value = '';
         inputs.hint.textContent = 'Start typing to search GBIF...';
         inputs.hint.className = 'small text-muted';
-
-        // Clear State
         currentProcessedBlob = null;
         if(cropper) cropper.destroy();
-        
-        // Reset View
         previewContainer.style.display = 'none';
         scannerContainer.style.display = 'block';
         video.style.display = 'block';
-        
-        // Reset Buttons
         captureBtn.textContent = "📸 Capture";
         captureBtn.classList.remove('btn-secondary', 'btn-warning');
         captureBtn.classList.add('btn-success');
         captureBtn.disabled = false;
-        
-        // Restart Camera if needed
         if(!stream) startCamera();
     }
 });

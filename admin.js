@@ -91,6 +91,53 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }, (errorMessage) => {}).catch(err => console.log(err));
     });
+    
+    // Helper to read barcode from a single video frame (for capture button)
+    function readBarcodeFromFrame(videoElement) {
+        return new Promise(resolve => {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = videoElement.videoWidth;
+            tempCanvas.height = videoElement.videoHeight;
+            const ctx = tempCanvas.getContext('2d');
+            ctx.drawImage(videoElement, 0, 0, tempCanvas.width, tempCanvas.height);
+
+            // Using the temporary library object provided by html5-qrcode
+            Html5Qrcode.getCandidates().forEach(candidate => {
+                candidate.scan().then(decodedText => {
+                    resolve(decodedText);
+                }).catch(() => {});
+            });
+
+            setTimeout(() => resolve(null), 500); 
+        });
+    }
+
+    // New: Helper to read barcode from a File object
+    function readBarcodeFromFile(imageFile) {
+        return new Promise(resolve => {
+            const tempElementId = "temp-barcode-reader";
+            let tempDiv = document.getElementById(tempElementId);
+            if (!tempDiv) {
+                tempDiv = document.createElement('div');
+                tempDiv.id = tempElementId;
+                tempDiv.style.display = 'none';
+                document.body.appendChild(tempDiv);
+            }
+
+            const html5QrCodeForFile = new Html5Qrcode(tempElementId);
+
+            html5QrCodeForFile.scanFile(imageFile, false)
+                .then(decodedText => {
+                    resolve(decodedText);
+                })
+                .catch(() => {
+                    resolve(null);
+                });
+            // Note: Cleanup is handled internally by the library on file scan finish, 
+            // but the element itself remains hidden for reuse.
+        });
+    }
+
 
     // ==========================================
     // 4. IMAGE CAPTURE (SMART) & UPLOAD
@@ -99,14 +146,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (captureBtn.textContent.includes("Capture")) {
             if(!window.cvReady) { alert("AI Engine loading..."); return; }
             
-            // 1. Barcode Check
+            // 1. Barcode Check (Stream)
             const barcodeResult = await readBarcodeFromFrame(video);
             if (barcodeResult && !inputs.accession.value) {
                 inputs.accession.value = barcodeResult;
                 console.log(`Barcode Auto-filled: ${barcodeResult}`);
             }
 
-            // 2. Proceed to Image Processing
             captureBtn.textContent = "Processing..."; captureBtn.disabled = true;
 
             const canvas = document.createElement('canvas');
@@ -119,47 +165,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Helper to read barcode from a single video frame (for capture button)
-    function readBarcodeFromFrame(videoElement) {
-        return new Promise(resolve => {
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = videoElement.videoWidth;
-            tempCanvas.height = videoElement.videoHeight;
-            const ctx = tempCanvas.getContext('2d');
-            ctx.drawImage(videoElement, 0, 0, tempCanvas.width, tempCanvas.height);
-
-            Html5Qrcode.getCandidates().forEach(candidate => {
-                candidate.scan().then(decodedText => {
-                    resolve(decodedText);
-                }).catch(() => {});
-            });
-
-            setTimeout(() => resolve(null), 500); 
-        });
-    }
-
     uploadTrigger.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', (e) => {
-        if (e.target.files && e.target.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.width; canvas.height = img.height;
-                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
-                    if(stream) { video.srcObject.getTracks().forEach(track => track.stop()); video.style.display = 'none'; }
-                    if(!window.cvReady) { alert("AI loading..."); return; }
-                    processImageWithOpenCV(canvas);
-                };
-                img.src = e.target.result;
-            }
-            reader.readAsDataURL(e.target.files[0]);
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+            
+            // 1. Barcode Check (File)
+            readBarcodeFromFile(file).then(barcodeResult => {
+                if (barcodeResult && !inputs.accession.value) {
+                    inputs.accession.value = barcodeResult;
+                    console.log(`Barcode Auto-filled from Gallery: ${barcodeResult}`);
+                }
+
+                // 2. Load Image for processing
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width; canvas.height = img.height;
+                        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
+                        if(stream) { video.srcObject.getTracks().forEach(track => track.stop()); video.style.display = 'none'; }
+                        if(!window.cvReady) { alert("AI loading..."); return; }
+                        processImageWithOpenCV(canvas);
+                    };
+                    img.src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            });
         }
     });
 
     // ==========================================
-    // 5. OPENCV AUTO-STRAIGHTENING
+    // 5. OPENCV AUTO-STRAIGHTENING (UNCHANGED)
     // ==========================================
     async function processImageWithOpenCV(sourceCanvas) {
         try {
@@ -263,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
-    // 6. SMART TAXONOMY
+    // 6. SMART TAXONOMY (UNCHANGED)
     // ==========================================
     inputs.binomial.addEventListener('input', (e) => {
         const query = e.target.value; if (query.length < 3) return;
@@ -428,7 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.scrollTo(0, 0);
     };
 
-    // New: Expose delete function to global scope
+    // Expose delete function to global scope
     window.deleteSpecimen = function(id) {
         const confirmation = confirm(`Are you sure you want to permanently delete specimen with Accession Number: ${id}? This action cannot be undone.`);
         
@@ -436,14 +474,12 @@ document.addEventListener('DOMContentLoaded', () => {
             let db = JSON.parse(localStorage.getItem('herbarium_db')) || [];
             const initialLength = db.length;
             
-            // Filter out the item to be deleted
             db = db.filter(item => item.id !== id);
             
             if (db.length < initialLength) {
                 localStorage.setItem('herbarium_db', JSON.stringify(db));
                 alert(`Specimen ${id} deleted successfully.`);
                 renderTable();
-                // If currently editing the deleted item, reset the form
                 if (editId === id) resetApp();
             } else {
                 alert(`Error: Specimen ${id} not found.`);

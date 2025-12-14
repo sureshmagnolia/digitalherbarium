@@ -7,41 +7,7 @@
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
-    
-    <style>
-        /* Custom Styles for the Camera View */
-        #scanner-container {
-            position: relative;
-            background: #000;
-            width: 100%;
-            height: 60vh; /* Takes up 60% of screen height */
-            overflow: hidden;
-            border-radius: 8px;
-        }
-        #video-feed {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        /* Overlay for the barcode scan area */
-        #scan-region-highlight {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80%; height: 20%;
-            border: 2px dashed rgba(0, 255, 0, 0.7);
-            pointer-events: none;
-            display: none; /* Hidden until scanning mode is on */
-        }
-        /* Preview Image Area */
-        #image-preview-container {
-            max-height: 70vh;
-            display: none; /* Hidden initially */
-        }
-        img {
-            max-width: 100%;
-        }
-    </style>
+    <link href="style.css" rel="stylesheet">
 </head>
 <body class="bg-light">
 
@@ -83,44 +49,29 @@
                     </div>
                 </div>
 
+                <div class="mb-3 position-relative">
+                    <label class="form-label">Scientific Name</label>
+                    <input type="text" id="binomial-input" class="form-control" placeholder="Type name (e.g. Tectona)..." list="taxonomy-suggestions" autocomplete="off">
+                    <datalist id="taxonomy-suggestions"></datalist>
+                    <small class="text-muted" id="taxa-hint">Start typing to search GBIF...</small>
+                </div>
 
-
-<div class="mb-3 position-relative">
-    <label class="form-label">Scientific Name</label>
-    <input type="text" id="binomial-input" class="form-control" placeholder="Type name (e.g. Tectona)..." list="taxonomy-suggestions" autocomplete="off">
-    <datalist id="taxonomy-suggestions"></datalist>
-    <small class="text-muted" id="taxa-hint">Start typing to search GBIF...</small>
-</div>
-
-<div class="row g-2 mb-3">
-    <div class="col-6">
-        <label class="small text-muted">Family</label>
-        <input type="text" id="family" class="form-control bg-light" readonly>
-    </div>
-    <div class="col-6">
-        <label class="small text-muted">Genus</label>
-        <input type="text" id="genus" class="form-control bg-light" readonly>
-    </div>
-    <div class="col-12">
-        <label class="small text-muted">Author Citation</label>
-        <input type="text" id="author" class="form-control bg-light" readonly>
-    </div>
-</div>
-
-
-
-
-
-                
-
-                <div class="row g-2">
+                <div class="row g-2 mb-3">
                     <div class="col-6">
-                        <input type="text" id="family" class="form-control" placeholder="Family" readonly>
+                        <label class="small text-muted">Family</label>
+                        <input type="text" id="family" class="form-control bg-light" readonly>
                     </div>
                     <div class="col-6">
-                        <input type="text" id="genus" class="form-control" placeholder="Genus" readonly>
+                        <label class="small text-muted">Genus</label>
+                        <input type="text" id="genus" class="form-control bg-light" readonly>
+                    </div>
+                    <div class="col-12">
+                        <label class="small text-muted">Author Citation</label>
+                        <input type="text" id="author" class="form-control bg-light" readonly>
                     </div>
                 </div>
+                
+                <button type="button" id="btn-upload-firebase" class="btn btn-primary w-100" disabled>Upload to Database (Pending Setup)</button>
 
             </form>
         </div>
@@ -130,193 +81,7 @@
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
-<script>
-    // --- VARIABLES ---
-    const video = document.getElementById('video-feed');
-    const captureBtn = document.getElementById('btn-capture');
-    const scanBarcodeBtn = document.getElementById('btn-scan-barcode');
-    const accessionInput = document.getElementById('accession-number');
-    const previewContainer = document.getElementById('image-preview-container');
-    const scannerContainer = document.getElementById('scanner-container');
-    const capturedImage = document.getElementById('captured-image');
-    
-    let html5QrCode; 
-    let cropper; // Instance of the Cropper
-    let stream;  // Camera stream
+<script src="admin.js"></script>
 
-    // --- 1. CAMERA FUNCTIONS ---
-    async function startCamera() {
-        try {
-            // Request back camera specifically (ideal for phones)
-            stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } } 
-            });
-            video.srcObject = stream;
-        } catch (err) {
-            console.error("Camera Error:", err);
-            alert("Could not access camera. Please allow permissions.");
-        }
-    }
-// --- 5. SMART TAXONOMY LOGIC (GBIF INTEGRATION) ---
-    const binomialInput = document.getElementById('binomial-input');
-    const suggestionsList = document.getElementById('taxonomy-suggestions');
-    const familyInput = document.getElementById('family');
-    const genusInput = document.getElementById('genus');
-    const authorInput = document.getElementById('author');
-
-    // Debounce function: Prevents API calls on every single keystroke (waits 300ms)
-    let debounceTimer;
-    
-    binomialInput.addEventListener('input', (e) => {
-        const query = e.target.value;
-        if (query.length < 3) return; // Don't search for short text
-
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            fetchSpeciesSuggestions(query);
-        }, 300);
-    });
-
-    // Function to fetch suggestions from GBIF
-    async function fetchSpeciesSuggestions(query) {
-        // GBIF Backbone Taxonomy Dataset Key: d7dddbf4-2cf0-4f39-9b2a-bb099caae36c
-        const url = `https://api.gbif.org/v1/species/suggest?q=${query}&rank=SPECIES&datasetKey=d7dddbf4-2cf0-4f39-9b2a-bb099caae36c`;
-
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            // Clear old suggestions
-            suggestionsList.innerHTML = '';
-
-            data.forEach(item => {
-                // Create an option for the datalist
-                const option = document.createElement('option');
-                option.value = item.scientificName; // This is what enters the box when clicked
-                suggestionsList.appendChild(option);
-            });
-
-            // CHECK: Did the user type/select a full valid name?
-            // If the input matches one of the results exactly, fetch full details.
-            const exactMatch = data.find(d => d.scientificName === query);
-            if (exactMatch) {
-                fillTaxonomyDetails(exactMatch);
-            }
-
-        } catch (error) {
-            console.error("GBIF API Error:", error);
-        }
-    }
-
-    // Function to fill the read-only boxes
-    function fillTaxonomyDetails(data) {
-        console.log("Selected Plant Data:", data);
-        
-        // Auto-fill fields
-        // Note: GBIF returns uppercase families usually
-        familyInput.value = data.family || "Unknown";
-        genusInput.value = data.genus || "Unknown";
-        authorInput.value = data.authorship || "";
-        
-        // Visual feedback
-        document.getElementById('taxa-hint').textContent = `✅ Verified: ${data.scientificName}`;
-        document.getElementById('taxa-hint').classList.replace('text-muted', 'text-success');
-    }
-    
-    // Listen for "change" event (when user selects from dropdown)
-    binomialInput.addEventListener('change', (e) => {
-        // Re-run the fetch to ensure we get the details for the final selection
-        fetchSpeciesSuggestions(e.target.value);
-    });
-    // Start camera on load
-    startCamera();
-
-    // --- 2. BARCODE SCANNING LOGIC ---
-    scanBarcodeBtn.addEventListener('click', () => {
-        // Stop the raw video feed to let HTML5-QRCode take over
-        if(stream) {
-            video.srcObject.getTracks().forEach(track => track.stop());
-            video.style.display = 'none';
-        }
-
-        // Initialize Scanner
-        html5QrCode = new Html5Qrcode("scanner-container");
-        
-        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
-        
-        // Start Scanning
-        html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
-            // SUCCESS: Barcode found!
-            console.log(`Barcode matched = ${decodedText}`);
-            accessionInput.value = decodedText; // Fill the input
-            
-            // Stop scanning and restart normal video
-            html5QrCode.stop().then(() => {
-                video.style.display = 'block';
-                startCamera(); 
-            });
-        }, (errorMessage) => {
-            // Scanning... (ignore errors while scanning)
-        }).catch(err => console.log(err));
-    });
-
-    // --- 3. CAPTURE & CROP LOGIC ---
-    captureBtn.addEventListener('click', () => {
-        // Create a canvas to grab the current frame
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        // Convert to image URL
-        const dataUrl = canvas.toDataURL('image/jpeg');
-
-        // Hide video, show image
-        video.style.display = 'none';
-        scannerContainer.style.display = 'none';
-        previewContainer.style.display = 'block';
-        capturedImage.src = dataUrl;
-
-        // Initialize Cropper.js
-        if(cropper) cropper.destroy();
-        cropper = new Cropper(capturedImage, {
-            viewMode: 1,
-            autoCropArea: 0.8, // Assume the sheet takes up 80% of screen
-            movable: false,
-            rotatable: true,
-            scalable: false,
-            zoomable: false,
-        });
-
-        // Change button to "Save / Compress"
-        captureBtn.textContent = "💾 Save & Compress";
-        captureBtn.classList.remove('btn-success');
-        captureBtn.classList.add('btn-primary');
-        
-        // Remove old listener and add Save listener
-        captureBtn.replaceWith(captureBtn.cloneNode(true));
-        document.getElementById('btn-capture').addEventListener('click', saveCompressedImage);
-    });
-
-    // --- 4. COMPRESSION LOGIC ---
-    function saveCompressedImage() {
-        // Get the cropped canvas
-        const croppedCanvas = cropper.getCroppedCanvas({
-            width: 1600, // Resize output to max 1600px width
-        });
-
-        // Convert to Blob (Compressed JPEG)
-        croppedCanvas.toBlob((blob) => {
-            console.log("Original Size: Unknown (Stream)");
-            console.log("Compressed Size: " + (blob.size / 1024).toFixed(2) + " KB");
-            
-            alert(`Image ready for upload! \nSize: ${(blob.size / 1024).toFixed(2)} KB`);
-            // THIS BLOB IS WHAT WE WILL SEND TO FIREBASE LATER
-            
-        }, 'image/jpeg', 0.7); // 0.7 = 70% Quality
-    }
-
-</script>
 </body>
 </html>
